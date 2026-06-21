@@ -1,0 +1,22 @@
+# NewsLens — dependencies
+# Versions pinned to match how the model was trained (see the training notebook).
+
+# ── Core ML / model loading ───────────────────────────────────────────────────
+torch==2.6.0
+transformers==4.52.4
+sentencepiece          # required by T5Tokenizer
+gensim                 # Word2Vec semantic search
+nltk                   # tokenization / stopwords
+scikit-learn           # cosine similarity
+numpy
+
+# ── API backend ───────────────────────────────────────────────────────────────
+fastapi
+uvicorn
+
+# ── Training only (needed to (re)run the notebook, not to serve the app) ───────
+torchvision==0.21.0
+datasets==3.6.0
+accelerate
+rouge-score
+pandas

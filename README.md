@@ -31,6 +31,7 @@ Automated News Summarization/
 ├── t5-finetuned-news/       # Fine-tuned T5-small model + tokenizer (generated)
 ├── word2vec_bbc.model       # Word2Vec model for semantic search (generated)
 ├── bbc_articles.txt         # One article per line — search corpus (generated)
+├── requirements.txt         # Python dependencies
 ├── .gitignore
 └── README.md
 ```
@@ -49,7 +50,7 @@ Automated News Summarization/
 ### 2. Install dependencies
 
 ```bash
-pip install fastapi uvicorn transformers torch gensim nltk scikit-learn numpy pandas datasets
+pip install -r requirements.txt
 ```
 
 ### 3. Build the model artifacts
