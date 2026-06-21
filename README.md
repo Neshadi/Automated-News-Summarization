@@ -1,0 +1,141 @@
+# NewsLens — Automated News Summarization
+
+NewsLens is an end-to-end news intelligence app that combines an **abstractive
+summarizer** (fine-tuned `T5-small`) with **Word2Vec semantic search** over a BBC
+news corpus. A FastAPI backend serves a polished single-page demo UI where you can
+summarize articles using different prompting strategies, search for related
+articles, and explore learned word relationships.
+
+## Features
+
+- **Abstractive summarization** with a fine-tuned `T5-small` model.
+- **Multiple prompting strategies**: `zero-shot`, `few-shot`, and `chain-of-thought`.
+- **Semantic search** over the article corpus using Word2Vec embeddings and cosine similarity.
+- **Word relations & analogies** (e.g. `economy + growth − crisis`) via the Word2Vec model.
+- **Self-contained web UI** served directly by the backend — no separate frontend build.
+- **Metrics** returned per summary: word counts, compression ratio, and latency.
+
+## Tech Stack
+
+- **Backend**: FastAPI + Uvicorn
+- **NLP / ML**: Hugging Face Transformers (T5-small), PyTorch, Gensim (Word2Vec), NLTK, scikit-learn
+- **Data**: [`gopalkalpande/bbc-news-summary`](https://huggingface.co/datasets/gopalkalpande/bbc-news-summary)
+- **Frontend**: Single static HTML page (`NewsLens_Demo_UI.html`)
+
+## Project Structure
+
+```
+Automated News Summarization/
+├── app.py                   # FastAPI backend (serves UI + summarize/search/relations APIs)
+├── train.py                 # Builds all artifacts: fine-tuned T5, Word2Vec, corpus
+├── NewsLens_Demo_UI.html    # Single-page demo frontend
+├── t5-finetuned-news/       # Fine-tuned T5-small model + tokenizer (generated)
+├── word2vec_bbc.model       # Word2Vec model for semantic search (generated)
+├── bbc_articles.txt         # One article per line — search corpus (generated)
+├── .gitignore
+└── README.md
+```
+
+> Note: `t5-finetuned-news/`, `word2vec_bbc.model*`, and `bbc_articles.txt` are
+> large, generated artifacts and are git-ignored. Rebuild them with `python train.py`.
+
+## Setup
+
+### 1. Prerequisites
+
+- Python 3.9+
+- (Optional) An NVIDIA GPU with CUDA for faster training/inference — CPU works too.
+
+### 2. Install dependencies
+
+```bash
+pip install fastapi uvicorn transformers torch gensim nltk scikit-learn numpy pandas datasets
+```
+
+### 3. Build the model artifacts
+
+This trains the T5 summarizer, the Word2Vec model, and writes the search corpus:
+
+```bash
+python train.py
+```
+
+Speed knobs (optional environment variables):
+
+| Variable        | Default | Description              |
+| --------------- | ------- | ------------------------ |
+| `NEWS_SAMPLES`  | `800`   | Number of articles used  |
+| `NEWS_EPOCHS`   | `1`     | Training epochs          |
+| `NEWS_MAXIN`    | `256`   | Max input tokens         |
+| `NEWS_MAXOUT`   | `64`    | Max target tokens        |
+
+On CPU the defaults finish in roughly 10–20 minutes. Increase `NEWS_SAMPLES` and
+`NEWS_EPOCHS` (e.g. `2200` / `3`) for higher quality if you have time or a GPU.
+If a fine-tuned model already exists, training is skipped and only the search
+artifacts are rebuilt.
+
+### 4. Run the app
+
+```bash
+python app.py
+```
+
+Then open [http://localhost:8000](http://localhost:8000) in your browser.
+
+## API Reference
+
+The backend exposes the following endpoints (base URL `http://localhost:8000`).
+
+### `GET /`
+Serves the NewsLens demo UI.
+
+### `GET /health`
+Returns model/load status, device, and number of indexed articles.
+
+### `POST /summarize`
+Generate an abstractive summary.
+
+Request body:
+
+```json
+{
+  "article": "Full article text …",
+  "strategy": "zero-shot",
+  "max_new_tokens": 80,
+  "num_beams": 4
+}
+```
+
+`strategy` is one of `zero-shot`, `few-shot`, or `chain-of-thought`.
+
+Response includes the `summary`, `strategy`, `input_words`, `output_words`,
+`compression`, and `latency_ms`.
+
+### `POST /search`
+Find semantically similar articles.
+
+```json
+{ "query": "stock market crash", "top_n": 5 }
+```
+
+Returns a ranked list of `{ rank, similarity, snippet }`.
+
+### `GET /word-relations`
+Returns nearest Word2Vec neighbours for a fixed set of news-domain words plus an
+analogy example (`economy + growth − crisis`).
+
+## How It Works
+
+1. **Training (`train.py`)** loads the BBC News Summary dataset, fine-tunes
+   `T5-small` on the `summarize:` task, trains a Word2Vec model on preprocessed
+   article tokens, and writes a flattened one-article-per-line corpus.
+2. **Serving (`app.py`)** loads all artifacts once at startup, builds a document
+   vector matrix for the corpus, and exposes the summarization and search APIs
+   consumed by the demo UI.
+
+## Notes
+
+- The first run downloads the dataset and required NLTK data (`punkt`,
+  `punkt_tab`, `stopwords`) automatically.
+- If `word2vec_bbc.model` or `bbc_articles.txt` are missing, the summarization
+  endpoint still works but semantic search is disabled until you run `train.py`.
