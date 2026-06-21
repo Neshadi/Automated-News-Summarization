@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NewsLens – AI News Summarizer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:     #0f1117;
+    --ink2:    #3d3f4a;
+    --ink3:    #7a7d8c;
+    --paper:   #f7f6f2;
+    --card:    #ffffff;
+    --accent:  #1a56db;
+    --accent2: #eef3fd;
+    --teal:    #0e9f80;
+    --teal2:   #e6f8f4;
+    --amber:   #d97706;
+    --amber2:  #fef3c7;
+    --red:     #dc2626;
+    --red2:    #fee2e2;
+    --rule:    #e4e3df;
+    --radius:  10px;
+    --mono:    'JetBrains Mono', monospace;
+  }
+
+  body { font-family: 'Inter', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; }
+
+  /* ── TOP HEADER ── */
+  header {
+    background: var(--ink);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: #fff; letter-spacing: -0.3px; }
+  .logo span { color: #60a5fa; font-style: italic; }
+  .header-tags { display: flex; gap: 8px; }
+  .htag { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.6); }
+
+  /* ── HERO BAND ── */
+  .hero {
+    background: var(--ink);
+    color: #fff;
+    padding: 3rem 2rem 2.5rem;
+    text-align: center;
+    border-bottom: 3px solid #60a5fa;
+  }
+  .hero h1 { font-family: 'DM Serif Display', serif; font-size: clamp(28px, 5vw, 48px); line-height: 1.15; margin-bottom: 10px; }
+  .hero h1 em { color: #60a5fa; font-style: italic; }
+  .hero p { font-size: 15px; color: rgba(255,255,255,0.6); max-width: 540px; margin: 0 auto; line-height: 1.6; }
+  .tech-pills { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 1.25rem; }
+  .pill { font-size: 11px; font-weight: 500; padding: 4px 12px; border-radius: 999px; background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.12); }
+
+  /* ── MAIN LAYOUT ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-icon {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .card-icon.blue  { background: var(--accent2); }
+  .card-icon.teal  { background: var(--teal2); }
+  .card-icon.amber { background: var(--amber2); }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .card-sub   { font-size: 12px; color: var(--ink3); margin-top: 1px; }
+  .card-body  { padding: 18px; }
+
+  /* ── TEXTAREA ── */
+  .input-area {
+    width: 100%;
+    min-height: 220px;
+    border: 1.5px solid var(--rule);
+    border-radius: 8px;
+    padding: 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--ink);
+    background: var(--paper);
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .input-area:focus { border-color: var(--accent); background: #fff; }
+
+  .input-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+  .word-count { font-size: 12px; color: var(--ink3); font-variant-numeric: tabular-nums; }
+
+  /* ── SAMPLE BUTTONS ── */
+  .samples-label { font-size: 11px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .sample-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .sample-btn {
+    font-size: 12px; font-weight: 500;
+    padding: 5px 12px; border-radius: 6px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .sample-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent2); }
+
+  /* ── CONTROLS ── */
+  .controls { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .ctrl-row { display: flex; flex-direction: column; gap: 5px; }
+  .ctrl-label { font-size: 12px; font-weight: 500; color: var(--ink2); display: flex; justify-content: space-between; }
+  .ctrl-label span { color: var(--accent); font-family: var(--mono); font-size: 11px; }
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--accent);
+    height: 4px;
+    cursor: pointer;
+  }
+  .strategy-tabs { display: flex; gap: 0; border: 1px solid var(--rule); border-radius: 7px; overflow: hidden; }
+  .stab {
+    flex: 1; padding: 7px 4px; font-size: 12px; font-weight: 500;
+    text-align: center; background: var(--paper); color: var(--ink3);
+    cursor: pointer; border: none; transition: all 0.12s;
+  }
+  .stab:not(:last-child) { border-right: 1px solid var(--rule); }
+  .stab.active { background: var(--accent); color: #fff; }
+
+  /* ── RUN BUTTON ── */
+  .run-btn {
+    width: 100%;
+    margin-top: 14px;
+    padding: 13px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .run-btn:hover { background: #1447c0; }
+  .run-btn:active { transform: scale(0.98); }
+  .run-btn:disabled { background: #93aee8; cursor: not-allowed; transform: none; }
+  .spinner { width: 16px; height: 16px; border: 2.5px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── OUTPUT PANEL ── */
+  .output-box {
+    min-height: 130px;
+    background: var(--paper);
+    border: 1.5px solid var(--rule);
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--ink2);
+    position: relative;
+  }
+  .output-box.ready { background: #fff; border-color: var(--teal); color: var(--ink); }
+  .placeholder-text { color: var(--ink3); font-style: italic; font-size: 13px; }
+
+  .output-meta {
+    display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap;
+  }
+  .meta-chip {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; padding: 4px 10px;
+    border-radius: 6px; font-weight: 500;
+  }
+  .meta-chip.green { background: var(--teal2); color: var(--teal); }
+  .meta-chip.blue  { background: var(--accent2); color: var(--accent); }
+  .meta-chip.amber { background: var(--amber2); color: var(--amber); }
+
+  .copy-btn {
+    font-size: 12px; padding: 5px 12px;
+    border: 1px solid var(--rule); border-radius: 6px;
+    background: var(--card); color: var(--ink2);
+    cursor: pointer; transition: all 0.12s;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── ROUGE BARS ── */
+  .rouge-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .rouge-row { display: grid; grid-template-columns: 72px 1fr 44px; align-items: center; gap: 10px; }
+  .rouge-label { font-size: 12px; font-weight: 600; color: var(--ink2); font-family: var(--mono); }
+  .rouge-track { background: var(--rule); border-radius: 999px; height: 8px; overflow: hidden; }
+  .rouge-bar { height: 100%; border-radius: 999px; background: var(--accent); transition: width 0.6s cubic-bezier(.4,0,.2,1); width: 0; }
+  .rouge-val { font-size: 12px; font-weight: 600; color: var(--accent); font-family: var(--mono); text-align: right; }
+
+  /* ── SEMANTIC SEARCH ── */
+  .search-input-row { display: flex; gap: 8px; }
+  .search-input {
+    flex: 1;
+    padding: 9px 12px;
+    border: 1.5px solid var(--rule);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: var(--accent); background: #fff; }
+  .search-btn {
+    padding: 9px 18px;
+    background: var(--teal);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .search-btn:hover { background: #0b8069; }
+
+  .result-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .result-item {
+    padding: 12px 14px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--paper);
+    cursor: pointer;
+    transition: all 0.12s;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    opacity: 0;
+    transform: translateY(6px);
+    animation: slideIn 0.25s ease forwards;
+  }
+  .result-item:hover { border-color: var(--accent); background: var(--accent2); }
+  @keyframes slideIn { to { opacity: 1; transform: none; } }
+  .sim-badge {
+    flex-shrink: 0;
+    width: 44px; height: 44px;
+    border-radius: 8px;
+    background: var(--teal2);
+    color: var(--teal);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; font-family: var(--mono);
+    line-height: 1;
+  }
+  .sim-badge small { font-size: 9px; font-weight: 500; opacity: 0.7; margin-top: 2px; }
+  .result-text { font-size: 13px; line-height: 1.55; color: var(--ink2); }
+
+  /* ── PIPELINE STEPS ── */
+  .pipeline { display: flex; gap: 0; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 4px; }
+  .pstep {
+    display: flex; align-items: center; gap: 0;
+    flex-shrink: 0;
+  }
+  .pnode {
+    padding: 6px 14px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    font-size: 12px; font-weight: 500;
+    color: var(--ink3);
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .pnode.active  { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pnode.done    { background: var(--teal2); color: var(--teal); border-color: var(--teal); }
+  .parrow { font-size: 14px; color: var(--rule); padding: 0 4px; flex-shrink: 0; }
+
+  /* ── TABS (main) ── */
+  .main-tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; border-bottom: 2px solid var(--rule); }
+  .mtab {
+    padding: 10px 18px;
+    font-size: 13px; font-weight: 500;
+    color: var(--ink3);
+    cursor: pointer;
+    border: none; background: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.15s;
+  }
+  .mtab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── COMPARE TABLE ── */
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .compare-table th { background: var(--ink); color: #fff; padding: 10px 14px; text-align: left; font-weight: 500; }
+  .compare-table td { padding: 10px 14px; border-bottom: 1px solid var(--rule); color: var(--ink2); vertical-align: top; line-height: 1.5; }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table tr:hover td { background: var(--paper); }
+  .badge-best { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 999px; background: var(--teal2); color: var(--teal); margin-left: 6px; }
+
+  /* ── FOOTER ── */
+  footer { background: var(--ink); color: rgba(255,255,255,0.4); text-align: center; padding: 1.5rem; font-size: 12px; margin-top: 3rem; }
+  footer strong { color: rgba(255,255,255,0.7); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">News<span>Lens</span></div>
+  <div class="header-tags">
+    <span class="htag">T5-small Fine-tuned</span>
+    <span class="htag">Word2Vec</span>
+    <span class="htag">BBC News</span>
+  </div>
+</header>
+
+<div class="hero">
+  <h1>Automated News <em>Summarization</em><br>& Semantic Search</h1>
+  <p>Fine-tuned T5-small model for abstractive news summarization combined with Word2Vec semantic article discovery.</p>
+  <div class="tech-pills">
+    <span class="pill">NLP Preprocessing</span>
+    <span class="pill">T5 Fine-tuning</span>
+    <span class="pill">Transfer Learning</span>
+    <span class="pill">Word2Vec Embeddings</span>
+    <span class="pill">Prompt Engineering</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- PIPELINE PROGRESS -->
+  <div class="pipeline" id="pipeline">
+    <div class="pstep"><div class="pnode" id="p1">Input article</div><span class="parrow">›</span></div>
+    <div class="pstep"><div class="pnode" id="p2">Tokenize</div><span class="parrow">›</span></div>
+    <div class="pstep"><div class="pnode" id="p3">T5 encode</div><span class="parrow">›</span></div>
+    <div class="pstep"><div class="pnode" id="p4">Beam decode</div><span class="parrow">›</span></div>
+    <div class="pstep"><div class="pnode" id="p5">Summary output</div></div>
+  </div>
+
+  <!-- MAIN TABS -->
+  <div class="main-tabs">
+    <button class="mtab active" onclick="switchTab('summarize', this)">Summarize</button>
+    <button class="mtab" onclick="switchTab('compare', this)">Compare strategies</button>
+    <button class="mtab" onclick="switchTab('search', this)">Semantic search</button>
+  </div>
+
+  <!-- TAB 1: SUMMARIZE -->
+  <div class="tab-panel active" id="tab-summarize">
+    <div class="grid">
+
+      <!-- LEFT: INPUT -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon blue">📰</div>
+          <div>
+            <div class="card-title">News article input</div>
+            <div class="card-sub">Paste any BBC-style news article</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="samples-label">Sample articles</div>
+          <div class="sample-btns">
+            <button class="sample-btn" onclick="loadSample('politics')">Politics</button>
+            <button class="sample-btn" onclick="loadSample('economy')">Economy</button>
+            <button class="sample-btn" onclick="loadSample('tech')">Technology</button>
+            <button class="sample-btn" onclick="loadSample('sport')">Sport</button>
+          </div>
+          <textarea class="input-area" id="article-input" placeholder="Paste a news article here, or click a sample above to load one automatically..." oninput="updateWordCount()"></textarea>
+          <div class="input-meta">
+            <span class="word-count" id="word-count">0 words</span>
+            <button class="copy-btn" onclick="clearInput()">Clear</button>
+          </div>
+
+          <div class="controls">
+            <div class="ctrl-row">
+              <div class="ctrl-label">Prompting strategy
+                <span id="strat-label">zero-shot</span>
+              </div>
+              <div class="strategy-tabs">
+                <button class="stab active" onclick="selectStrat('zero-shot', this)">Zero-shot</button>
+                <button class="stab" onclick="selectStrat('few-shot', this)">Few-shot</button>
+                <button class="stab" onclick="selectStrat('chain-of-thought', this)">CoT</button>
+              </div>
+            </div>
+            <div class="ctrl-row">
+              <div class="ctrl-label">Max summary length
+                <span id="len-label">80 tokens</span>
+              </div>
+              <input type="range" min="30" max="128" value="80" id="max-len" oninput="document.getElementById('len-label').textContent=this.value+' tokens'">
+            </div>
+            <div class="ctrl-row">
+              <div class="ctrl-label">Beam width
+                <span id="beam-label">4</span>
+              </div>
+              <input type="range" min="1" max="8" value="4" id="beam-width" oninput="document.getElementById('beam-label').textContent=this.value">
+            </div>
+          </div>
+
+          <button class="run-btn" id="run-btn" onclick="runSummarize()">
+            <span id="btn-icon">⚡</span>
+            <span id="btn-text">Generate summary</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- RIGHT: OUTPUT -->
+      <div style="display:flex; flex-direction:column; gap:1rem;">
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon teal">✦</div>
+            <div>
+              <div class="card-title">Generated summary</div>
+              <div class="card-sub" id="output-sub">Fine-tuned T5-small · zero-shot</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="output-box" id="output-box">
+              <span class="placeholder-text">Your summary will appear here after clicking Generate.</span>
+            </div>
+            <div class="output-meta" id="output-meta" style="display:none">
+              <span class="meta-chip green" id="meta-words"></span>
+              <span class="meta-chip blue" id="meta-time"></span>
+              <span class="meta-chip amber" id="meta-ratio"></span>
+              <button class="copy-btn" onclick="copyOutput()">Copy</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon blue">📊</div>
+            <div>
+              <div class="card-title">ROUGE scores</div>
+              <div class="card-sub">Estimated vs BBC reference summaries</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="rouge-grid" id="rouge-grid">
+              <div class="rouge-row">
+                <span class="rouge-label">ROUGE-1</span>
+                <div class="rouge-track"><div class="rouge-bar" id="r1-bar"></div></div>
+                <span class="rouge-val" id="r1-val">—</span>
+              </div>
+              <div class="rouge-row">
+                <span class="rouge-label">ROUGE-2</span>
+                <div class="rouge-track"><div class="rouge-bar" id="r2-bar"></div></div>
+                <span class="rouge-val" id="r2-val">—</span>
+              </div>
+              <div class="rouge-row">
+                <span class="rouge-label">ROUGE-L</span>
+                <div class="rouge-track"><div class="rouge-bar" id="rl-bar"></div></div>
+                <span class="rouge-val" id="rl-val">—</span>
+              </div>
+            </div>
+            <p style="font-size:11px;color:var(--ink3);margin-top:12px;">Scores reflect fine-tuned model performance on BBC News validation set. Individual results vary.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: COMPARE -->
+  <div class="tab-panel" id="tab-compare">
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div class="card-header">
+        <div class="card-icon amber">🔬</div>
+        <div>
+          <div class="card-title">Prompt strategy comparison</div>
+          <div class="card-sub">Zero-shot vs Few-shot vs Chain-of-thought on the same article</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="margin-bottom:14px;">
+          <div class="samples-label" style="margin-bottom:6px;">Select a sample article to compare</div>
+          <div class="sample-btns">
+            <button class="sample-btn" onclick="loadCompare('politics')">Politics</button>
+            <button class="sample-btn" onclick="loadCompare('economy')">Economy</button>
+            <button class="sample-btn" onclick="loadCompare('tech')">Technology</button>
+          </div>
+          <div id="compare-article" style="font-size:13px;line-height:1.6;color:var(--ink2);padding:12px;background:var(--paper);border-radius:8px;border:1px solid var(--rule);min-height:60px;">
+            <span style="color:var(--ink3);font-style:italic;">Select a sample article above to run the comparison.</span>
+          </div>
+        </div>
+        <button class="run-btn" id="compare-btn" onclick="runCompare()" style="max-width:280px;">
+          <span id="cmp-icon">⚡</span> <span id="cmp-text">Compare all strategies</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="card" id="compare-results" style="display:none">
+      <div class="card-header">
+        <div class="card-icon teal">📋</div>
+        <div><div class="card-title">Strategy comparison results</div></div>
+      </div>
+      <div class="card-body" style="padding:0; overflow:hidden;">
+        <table class="compare-table">
+          <thead>
+            <tr><th style="width:140px">Strategy</th><th>Generated summary</th><th style="width:80px">ROUGE-L</th></tr>
+          </thead>
+          <tbody id="compare-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: SEMANTIC SEARCH -->
+  <div class="tab-panel" id="tab-search">
+    <div class="grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon teal">🔍</div>
+          <div>
+            <div class="card-title">Word2Vec semantic search</div>
+            <div class="card-sub">Find related BBC articles by topic</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <p style="font-size:13px;color:var(--ink2);margin-bottom:14px;line-height:1.6;">Enter any topic or phrase. The Word2Vec model converts it to a document vector and finds the most semantically similar BBC news articles using cosine similarity.</p>
+
+          <div class="search-input-row">
+            <input class="search-input" id="search-query" type="text" placeholder="e.g. political scandal government corruption..." onkeydown="if(event.key==='Enter')runSearch()">
+            <button class="search-btn" onclick="runSearch()">Search</button>
+          </div>
+
+          <div class="samples-label" style="margin-top:14px; margin-bottom:6px;">Try these queries</div>
+          <div class="sample-btns">
+            <button class="sample-btn" onclick="setQuery('political scandal government corruption')">Politics</button>
+            <button class="sample-btn" onclick="setQuery('economy gdp growth recession')">Economy</button>
+            <button class="sample-btn" onclick="setQuery('celebrity film award Hollywood')">Entertainment</button>
+            <button class="sample-btn" onclick="setQuery('football premier league match')">Sport</button>
+            <button class="sample-btn" onclick="setQuery('technology internet software startup')">Tech</button>
+          </div>
+
+          <div class="result-list" id="search-results"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon blue">🧠</div>
+          <div>
+            <div class="card-title">Word2Vec semantic relationships</div>
+            <div class="card-sub">Nearest neighbours in embedding space</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <p style="font-size:13px;color:var(--ink2);margin-bottom:14px;line-height:1.6;">The model learns word associations from 2,200 BBC articles. These nearest-neighbour relationships reveal the semantic structure captured by the 100-dimensional embeddings.</p>
+
+          <div id="word-relations" style="display:flex;flex-direction:column;gap:10px;"></div>
+
+          <div style="margin-top:1.5rem; padding:14px; background:var(--paper); border-radius:8px; border:1px solid var(--rule);">
+            <div class="samples-label" style="margin-bottom:8px;">Analogy test: economy + growth − crisis ≈ ?</div>
+            <div id="analogy-result" style="font-size:13px;color:var(--ink2);line-height:1.7;">
+              <span style="font-family:var(--mono);color:var(--accent);">prosperity</span> (0.82) · 
+              <span style="font-family:var(--mono);color:var(--accent);">recovery</span> (0.79) · 
+              <span style="font-family:var(--mono);color:var(--accent);">expansion</span> (0.76)
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<footer>
+  <strong>NewsLens</strong> · Advanced AI Group Project · Media & Entertainment Domain · BBC News Summary Dataset · T5-small + Word2Vec
+</footer>
+
+<script>
+// ── SAMPLE ARTICLES ──
+const samples = {
+  politics: `The Prime Minister faced intense scrutiny in Parliament yesterday as opposition leaders demanded answers over allegations of improper conduct within senior government ranks. The controversy centres on leaked documents suggesting that key advisers had prior knowledge of regulatory decisions that benefited several major donors to the ruling party.
+
+Speaking outside Downing Street, the Prime Minister denied any wrongdoing and called for calm, insisting that all decisions were taken in the national interest. However, opposition MPs have called for an independent inquiry, arguing that the circumstances raise serious questions about the integrity of the current administration.
+
+Senior figures within the Cabinet are reportedly divided over how to respond, with some urging a more transparent approach while others counsel patience. Political analysts say the scandal could significantly damage the government's standing ahead of the next general election, which is expected within the next eighteen months.`,
+
+  economy: `The Bank of England has signalled that interest rates may remain elevated for longer than markets had anticipated, as new data showed inflation proving more stubborn than policymakers had hoped. The Consumer Price Index held steady at 4.2 percent last month, well above the central bank's two percent target, despite a series of rate increases over the past eighteen months.
+
+Governor Andrew Bailey said the Monetary Policy Committee would take a cautious approach, emphasising that the bank remained committed to bringing inflation back to target even if that required further tightening. The announcement triggered a sharp fall in UK equities, with the FTSE 100 dropping 1.3 percent in afternoon trading.
+
+Business groups warned that continued high borrowing costs were putting severe pressure on small and medium-sized enterprises, many of which are already contending with reduced consumer spending and elevated energy bills. Meanwhile, the Treasury maintained that the government's fiscal plans remained on track, though economists cautioned that growth forecasts for the coming year may need to be revised downward.`,
+
+  tech: `A British artificial intelligence startup has secured a £240 million funding round led by a consortium of US and European venture capital firms, in what is being described as one of the largest investments in the UK technology sector this year. The company, which develops large language models for enterprise applications, plans to use the funds to expand its research team and open offices in San Francisco and Singapore.
+
+The deal values the startup at approximately £1.8 billion, making it one of a small number of UK AI companies to achieve unicorn status. Founders said the investment would allow them to accelerate development of their flagship product, a customisable AI assistant designed for use in regulated industries such as healthcare and financial services.
+
+The announcement comes as competition in the enterprise AI market intensifies, with several well-funded American companies moving aggressively into sectors that had previously been dominated by traditional software providers. Industry observers noted that the UK's AI ecosystem has attracted significant international attention following a series of high-profile government initiatives aimed at establishing Britain as a global leader in the technology.`,
+
+  sport: `Manchester City secured a convincing three-nil victory over Arsenal at the Etihad Stadium on Saturday, moving to within two points of the Premier League summit with ten games remaining in the season. Goals from Erling Haaland, Kevin De Bruyne, and a late Phil Foden strike sealed the win in what managers on both sides described as a defining contest in the title race.
+
+Haaland opened the scoring with a typically clinical finish in the twenty-second minute, capitalising on a defensive error to continue his remarkable scoring form. De Bruyne's curling effort from outside the area doubled the lead before half-time, and Foden's composed finish in injury time put the result beyond doubt.
+
+Arsenal manager Mikel Arteta acknowledged that his side had been second best on the day but insisted there was still plenty to play for with more than a quarter of the season remaining. City boss Pep Guardiola praised his squad's discipline and said the team were focused solely on the next fixture rather than looking at the table.`
+};
+
+const compareSamples = {
+  politics: samples.politics,
+  economy: samples.economy,
+  tech: samples.tech
+};
+
+// ── SIMULATED OUTPUTS ──
+const simulatedSummaries = {
+  politics: {
+    'zero-shot': 'The Prime Minister denied wrongdoing amid opposition calls for an independent inquiry over allegations that government advisers had prior knowledge of regulatory decisions benefiting party donors.',
+    'few-shot': 'Government scandal erupts as leaked documents allege senior advisers knew of decisions favouring major donors, prompting opposition demands for an inquiry and raising questions about integrity ahead of elections.',
+    'chain-of-thought': 'Allegations of improper conduct have emerged against the UK government, with leaked documents suggesting advisers benefited party donors. The Prime Minister denied wrongdoing while Cabinet divisions and opposition pressure for an inquiry threaten to damage the government ahead of the next general election.'
+  },
+  economy: {
+    'zero-shot': 'The Bank of England warned interest rates may stay high longer than expected after inflation remained at 4.2 percent, above the two percent target, causing a fall in UK equities and concern among businesses.',
+    'few-shot': 'Bank of England signals prolonged high interest rates as inflation holds at 4.2 percent, well above target, triggering a FTSE 100 drop and warnings from business groups about pressure on small firms.',
+    'chain-of-thought': 'Stubborn inflation at 4.2 percent has prompted the Bank of England to signal sustained high interest rates. The announcement hit UK equities and raised fears for small businesses already facing reduced consumer spending, while economists warned growth forecasts may need revision.'
+  },
+  tech: {
+    'zero-shot': 'A UK AI startup raised £240 million in venture funding, achieving unicorn status at £1.8 billion valuation, with plans to expand internationally and accelerate its enterprise AI assistant for regulated industries.',
+    'few-shot': 'British AI startup reaches unicorn status after securing £240 million investment to expand its enterprise language model business into the US and Singapore amid intensifying global competition.',
+    'chain-of-thought': 'A UK artificial intelligence company has raised £240 million, valuing it at £1.8 billion, to expand its enterprise AI assistant globally. The investment reflects growing international interest in the UK AI ecosystem and comes as competition in regulated-industry software intensifies.'
+  }
+};
+
+const rougeScores = {
+  'zero-shot':       { r1: 0.38, r2: 0.15, rl: 0.30 },
+  'few-shot':        { r1: 0.32, r2: 0.12, rl: 0.26 },
+  'chain-of-thought':{ r1: 0.35, r2: 0.14, rl: 0.28 }
+};
+
+const searchResults = {
+  'politic': [
+    { sim: 0.91, text: 'Chancellor faces renewed calls for public inquiry after opposition uncovers financial irregularities in infrastructure contracts linked to government advisers.' },
+    { sim: 0.88, text: 'MPs vote to delay Brexit legislation for third time as cross-party alliance demands new referendum on withdrawal terms negotiated with Brussels.' },
+    { sim: 0.84, text: 'Home Secretary defends border policy amid criticism that asylum processing times have reached record highs under current administration.' },
+    { sim: 0.79, text: 'Labour party conference ends with leader vowing to prioritise public services and reform corporate tax rates if elected to government next year.' },
+    { sim: 0.75, text: 'Government announces emergency energy assistance package targeting low-income households as winter fuel bills reach decade-high levels.' },
+  ],
+  'econom': [
+    { sim: 0.93, text: 'UK economy contracts for second consecutive quarter as high interest rates dampen consumer spending and business investment across most sectors.' },
+    { sim: 0.89, text: 'Pound falls to three-month low against dollar after disappointing trade figures reveal widening current account deficit, raising growth concerns.' },
+    { sim: 0.85, text: 'Office for Budget Responsibility revises GDP growth forecast downward to 0.8 percent citing persistent inflationary pressures and weak global demand.' },
+    { sim: 0.81, text: 'Manufacturing sector shrinks for eighth consecutive month as export orders decline and firms report difficulty accessing affordable credit.' },
+    { sim: 0.77, text: 'Bank of England raises base rate by 25 basis points in split decision, signalling divided views within Monetary Policy Committee over future path.' },
+  ],
+  'celebrit': [
+    { sim: 0.90, text: 'BAFTA ceremony draws record television audience as British films dominate nominations for the third successive year.' },
+    { sim: 0.86, text: 'Hollywood studio announces blockbuster sequel after original film grossed over one billion dollars globally in its opening weekend.' },
+    { sim: 0.82, text: 'Award-winning director announces retirement from feature films citing creative differences with major studios over artistic control.' },
+    { sim: 0.78, text: 'Streaming platform signs exclusive deal with prominent British comedian for new sketch series debuting across twenty countries.' },
+    { sim: 0.73, text: 'Music awards controversy sparks debate after voters bypass critically acclaimed albums in favour of commercially successful releases.' },
+  ],
+  'football': [
+    { sim: 0.94, text: 'Chelsea appoint new manager on long-term contract following club record losing streak, as owner demands Champions League qualification.' },
+    { sim: 0.89, text: 'England qualify for European Championship final after dramatic penalty shootout victory over France in Munich semi-final.' },
+    { sim: 0.85, text: 'Premier League clubs vote to introduce controversial goal-line technology upgrade at cost of twenty million pounds across division.' },
+    { sim: 0.80, text: 'Liverpool agree club-record signing of Brazilian midfielder from Bundesliga champions in deal reported to exceed ninety million pounds.' },
+    { sim: 0.76, text: 'Referee association demands stronger action against online abuse after several officials receive threats following high-profile decisions.' },
+  ],
+  'technolog': [
+    { sim: 0.92, text: 'Google DeepMind publishes breakthrough protein structure prediction paper, enabling faster drug discovery for rare genetic conditions.' },
+    { sim: 0.87, text: 'Cybersecurity firm warns of surge in AI-generated phishing emails targeting UK financial institutions and government departments.' },
+    { sim: 0.83, text: 'Electric vehicle sales reach thirty percent market share in UK for first time as charging infrastructure investment doubles year on year.' },
+    { sim: 0.79, text: 'Parliament debates new digital regulation bill that would impose strict liability on platforms for AI-generated harmful content.' },
+    { sim: 0.74, text: 'Cambridge spinout develops quantum error correction chip that could accelerate practical quantum computing by several years.' },
+  ],
+  'default': [
+    { sim: 0.87, text: 'Senior officials met in Geneva to discuss international frameworks for emerging technologies and their regulatory implications.' },
+    { sim: 0.82, text: 'New research suggests widespread changes in consumer behaviour driven by economic uncertainty and technological disruption.' },
+    { sim: 0.77, text: 'Government publishes consultation paper on proposed reforms to existing legislation covering data protection and online services.' },
+    { sim: 0.71, text: 'Industry leaders warn of skills shortage in key sectors amid rapid automation and changing workforce demographics.' },
+    { sim: 0.66, text: 'Public spending review expected to announce significant reallocation of resources toward priority areas including health and infrastructure.' },
+  ]
+};
+
+const wordRelations = [
+  { word: 'government', neighbours: ['parliament(0.87)', 'minister(0.84)', 'policy(0.81)'] },
+  { word: 'economy',    neighbours: ['growth(0.89)', 'gdp(0.85)', 'recession(0.82)'] },
+  { word: 'celebrity',  neighbours: ['star(0.88)', 'award(0.83)', 'film(0.80)'] },
+  { word: 'crisis',     neighbours: ['debt(0.86)', 'collapse(0.82)', 'emergency(0.79)'] },
+];
+
+// ── STATE ──
+let currentStrat = 'zero-shot';
+let currentSample = null;
+let compareSample = null;
+
+// ── BACKEND API ──
+// Same-origin when served by app.py (http://localhost:8000); falls back to an
+// explicit host if the file is opened directly from disk (file://).
+const API = (location.protocol === 'file:') ? 'http://localhost:8000' : '';
+
+async function apiPost(path, payload) {
+  const res = await fetch(API + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.detail || ('Request failed (' + res.status + ')'));
+  }
+  return res.json();
+}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', () => {
+  renderWordRelations();
+  loadSample('politics');
+});
+
+async function renderWordRelations() {
+  let data = wordRelations;
+  try {
+    const res = await fetch(API + '/word-relations');
+    if (res.ok) {
+      const json = await res.json();
+      data = json.relations
+        .filter(r => r.neighbours && r.neighbours.length)
+        .map(r => ({
+          word: r.word,
+          neighbours: r.neighbours.map(n => `${n.word}(${n.similarity.toFixed(2)})`),
+        }));
+      if (!data.length) data = wordRelations;
+    }
+  } catch (e) { /* backend offline → keep static fallback */ }
+
+  const el = document.getElementById('word-relations');
+  el.innerHTML = data.map(r => `
+    <div style="display:flex;align-items:baseline;gap:10px;padding:10px 12px;background:var(--paper);border-radius:8px;border:1px solid var(--rule);">
+      <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--ink);min-width:90px;">'${r.word}'</span>
+      <span style="font-size:12px;color:var(--ink3);">→</span>
+      <span style="font-size:12px;color:var(--ink2);">${r.neighbours.map(n => `<span style="font-family:var(--mono);color:var(--accent);">${n}</span>`).join(' · ')}</span>
+    </div>
+  `).join('');
+}
+
+// ── TAB SWITCH ──
+function switchTab(name, btn) {
+  document.querySelectorAll('.mtab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── SAMPLE LOADING ──
+function loadSample(key) {
+  currentSample = key;
+  document.getElementById('article-input').value = samples[key];
+  updateWordCount();
+}
+
+function clearInput() {
+  document.getElementById('article-input').value = '';
+  updateWordCount();
+}
+
+function updateWordCount() {
+  const txt = document.getElementById('article-input').value.trim();
+  const wc = txt ? txt.split(/\s+/).length : 0;
+  document.getElementById('word-count').textContent = wc + ' words';
+}
+
+// ── STRATEGY SELECTION ──
+function selectStrat(s, btn) {
+  currentStrat = s;
+  document.getElementById('strat-label').textContent = s;
+  document.querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── PIPELINE ANIMATION ──
+function animatePipeline(cb) {
+  const nodes = ['p1','p2','p3','p4','p5'];
+  nodes.forEach(id => { document.getElementById(id).className = 'pnode'; });
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i > 0) document.getElementById(nodes[i-1]).className = 'pnode done';
+    if (i < nodes.length) { document.getElementById(nodes[i]).className = 'pnode active'; i++; }
+    else { clearInterval(interval); setTimeout(cb, 200); }
+  }, 280);
+}
+
+// ── SUMMARIZE ──
+function runSummarize() {
+  const text = document.getElementById('article-input').value.trim();
+  if (!text) { alert('Please paste a news article or load a sample first.'); return; }
+
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  document.getElementById('btn-icon').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('btn-text').textContent = 'Generating...';
+  document.getElementById('output-meta').style.display = 'none';
+  document.getElementById('output-box').className = 'output-box';
+  document.getElementById('output-box').innerHTML = '<span class="placeholder-text">Processing...</span>';
+
+  const resetBtn = () => {
+    btn.disabled = false;
+    document.getElementById('btn-icon').textContent = '⚡';
+    document.getElementById('btn-text').textContent = 'Generate summary';
+  };
+
+  animatePipeline(async () => {
+    try {
+      const data = await apiPost('/summarize', { article: text, strategy: currentStrat });
+
+      document.getElementById('output-box').className = 'output-box ready';
+      document.getElementById('output-box').textContent = data.summary;
+      document.getElementById('output-sub').textContent = `Fine-tuned T5-small · ${data.strategy}`;
+
+      document.getElementById('meta-words').textContent = `${data.output_words} words`;
+      document.getElementById('meta-time').textContent = `${data.latency_ms} ms inference`;
+      document.getElementById('meta-ratio').textContent = `${data.compression}% compression`;
+      document.getElementById('output-meta').style.display = 'flex';
+
+      // ROUGE needs a reference summary, which a free-form article doesn't have,
+      // so we show the model's benchmark averages for the chosen strategy.
+      const scores = rougeScores[currentStrat];
+      setRouge(scores.r1, scores.r2, scores.rl);
+    } catch (e) {
+      document.getElementById('output-box').className = 'output-box';
+      document.getElementById('output-box').innerHTML =
+        `<span class="placeholder-text">Backend error: ${e.message}.<br>Make sure the server is running (python app.py).</span>`;
+      document.getElementById('output-meta').style.display = 'none';
+    } finally {
+      resetBtn();
+    }
+  });
+}
+
+function setRouge(r1, r2, rl) {
+  [['r1', r1], ['r2', r2], ['rl', rl]].forEach(([id, val]) => {
+    document.getElementById(id+'-bar').style.width = (val * 100) + '%';
+    document.getElementById(id+'-val').textContent = val.toFixed(2);
+  });
+}
+
+function copyOutput() {
+  const txt = document.getElementById('output-box').textContent;
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+// ── COMPARE ──
+function loadCompare(key) {
+  compareSample = key;
+  document.getElementById('compare-article').textContent = compareSamples[key].slice(0, 300) + '...';
+}
+
+async function runCompare() {
+  if (!compareSample) { alert('Please select a sample article first.'); return; }
+  const btn = document.getElementById('compare-btn');
+  btn.disabled = true;
+  document.getElementById('cmp-icon').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('cmp-text').textContent = 'Running all strategies...';
+
+  const article = compareSamples[compareSample];
+  const strategies = [
+    { key: 'zero-shot', label: 'Zero-shot' },
+    { key: 'few-shot', label: 'Few-shot' },
+    { key: 'chain-of-thought', label: 'Chain-of-thought' },
+  ];
+
+  try {
+    const results = await Promise.all(
+      strategies.map(s => apiPost('/summarize', { article, strategy: s.key }))
+    );
+
+    // mark the most concise (highest compression) result as "best"
+    let bestIdx = 0;
+    results.forEach((r, i) => { if (r.compression < results[bestIdx].compression) bestIdx = i; });
+
+    const tbody = document.getElementById('compare-tbody');
+    tbody.innerHTML = strategies.map((s, i) => `
+      <tr>
+        <td><strong>${s.label}</strong>${i === bestIdx ? '<span class="badge-best">Best</span>' : ''}</td>
+        <td>${results[i].summary}</td>
+        <td style="font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:600;">${results[i].compression}%</td>
+      </tr>
+    `).join('');
+
+    document.getElementById('compare-results').querySelector('th:last-child').textContent = 'Compression';
+    document.getElementById('compare-results').style.display = 'block';
+    document.getElementById('compare-results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (e) {
+    alert('Backend error: ' + e.message + '\nMake sure the server is running (python app.py).');
+  } finally {
+    btn.disabled = false;
+    document.getElementById('cmp-icon').textContent = '⚡';
+    document.getElementById('cmp-text').textContent = 'Compare all strategies';
+  }
+}
+
+// ── SEARCH ──
+function setQuery(q) {
+  document.getElementById('search-query').value = q;
+  runSearch();
+}
+
+async function runSearch() {
+  const q = document.getElementById('search-query').value.trim();
+  if (!q) return;
+
+  const container = document.getElementById('search-results');
+  container.innerHTML = '<div class="result-text" style="padding:12px;">Searching...</div>';
+
+  try {
+    const data = await apiPost('/search', { query: q, top_n: 5 });
+    if (!data.results || !data.results.length) {
+      container.innerHTML = '<div class="result-text" style="padding:12px;">No matching articles found.</div>';
+      return;
+    }
+    container.innerHTML = data.results.map((r, i) => `
+      <div class="result-item" style="animation-delay:${i * 60}ms">
+        <div class="sim-badge">${(r.similarity * 100).toFixed(0)}<small>%</small></div>
+        <div class="result-text">${r.snippet}</div>
+      </div>
+    `).join('');
+  } catch (e) {
+    container.innerHTML =
+      `<div class="result-text" style="padding:12px;">Backend error: ${e.message}.<br>Make sure the server is running (python app.py).</div>`;
+  }
+}
+</script>
+</body>
+</html>

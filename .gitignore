@@ -1,0 +1,20 @@
+# ── Trained model & generated artifacts ──────────────────────────────────────
+# These are large and rebuildable with:  python train.py
+t5-finetuned-news/
+word2vec_bbc.model
+word2vec_bbc.model.*
+bbc_articles.txt
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ── Caches / misc ────────────────────────────────────────────────────────────
+.cache/
+.ipynb_checkpoints/
+*.log
+.DS_Store
