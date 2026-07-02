@@ -1,5 +1,6 @@
 # ── Trained model & generated artifacts ──────────────────────────────────────
-# These are large and rebuildable with:  python train.py
+# These are large and rebuildable with the training notebook
+# (RefactoredNewsContentSummarization.ipynb)
 t5-finetuned-news/
 word2vec_bbc.model
 word2vec_bbc.model.*
